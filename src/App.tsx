@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { createRope, stepRope, type RopePoint } from "./useRope";
 import { DEFAULT_CHARMS, ritualFor, type Charm, type RitualType } from "./charms";
 import { playRitualSound } from "./sound";
+import { CharmGlyph } from "./charmArt";
 import "./App.css";
 
 const MAX_TILT_DEG = 22;
@@ -185,7 +186,15 @@ export default function App() {
   const applyCustomEmoji = () => {
     const trimmed = customEmoji.trim();
     if (!trimmed) return;
-    setCharm({ id: "custom", emoji: trimmed, name: "Custom", ritual: "sparkle" });
+    setCharm({
+      id: "custom",
+      emoji: trimmed,
+      name: "Custom",
+      ritual: "sparkle",
+      region: "Your own",
+      description: "A charm of your own choosing, hung on the same thread as the rest.",
+      actionLabel: "Give it a shake",
+    });
     setCustomEmoji("");
     setMenuOpen(false);
     setForceInteractive(false);
@@ -250,29 +259,40 @@ export default function App() {
         onContextMenu={onCharmContextMenu}
         title={`${charm.name} — click for a ritual, right-click to change`}
       >
-        <span className={`charm-inner ${activeRitual ? `ritual-${activeRitual}` : "idle"}`}>{charm.emoji}</span>
+        <span className={`charm-inner ${activeRitual ? `ritual-${activeRitual}` : "idle"}`}>
+          <CharmGlyph charm={charm} size={40} />
+        </span>
       </div>
 
       {menuOpen && (
         <div
           className="menu"
           style={{
-            left: Math.min(Math.max(charmPos.x - 108, 12), stage.width - 228),
+            left: Math.min(Math.max(charmPos.x - 145, 12), stage.width - 302),
             top: charmPos.y + 34,
           }}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <div className="menu-arrow" style={{ left: Math.min(96, charmPos.x - Math.max(charmPos.x - 108, 12) - 8) }} />
+          <div className="menu-arrow" style={{ left: Math.min(133, charmPos.x - Math.max(charmPos.x - 145, 12) - 8) }} />
           <p className="menu-label">choose a charm</p>
-          <div className="menu-grid">
+          <div className="roster">
             {DEFAULT_CHARMS.map((c) => (
               <button
                 key={c.id}
-                className={`menu-charm ${c.id === charm.id ? "active" : ""}`}
+                className={`roster-card ${c.id === charm.id ? "active" : ""}`}
                 onClick={() => chooseCharm(c)}
               >
-                <span className="menu-charm-glyph">{c.emoji}</span>
-                <span className="menu-charm-name">{c.name}</span>
+                <span className="roster-glyph">
+                  <span className="roster-cord" />
+                  <span className="roster-bead" />
+                  <span className="roster-emoji">
+                    <CharmGlyph charm={c} size={30} />
+                  </span>
+                </span>
+                <span className="roster-name">{c.name}</span>
+                <span className="roster-tag">{c.region}</span>
+                <span className="roster-desc">{c.description}</span>
+                <span className="roster-action">{c.actionLabel}</span>
               </button>
             ))}
           </div>

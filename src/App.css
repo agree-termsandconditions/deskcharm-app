@@ -223,7 +223,7 @@ body,
 
 .menu {
   position: absolute;
-  width: 216px;
+  width: 290px;
   background: var(--ink);
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -265,48 +265,134 @@ body,
   color: var(--parchment-dim);
 }
 
-.menu-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.menu-charm {
+.roster {
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: min(58vh, 460px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0 -4px;
+  padding: 2px 4px 2px 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(210, 162, 76, 0.4) transparent;
+}
+
+.roster::-webkit-scrollbar {
+  width: 6px;
+}
+
+.roster::-webkit-scrollbar-thumb {
+  background: rgba(210, 162, 76, 0.35);
+  border-radius: 6px;
+}
+
+.roster-card {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
+  width: 100%;
   background: var(--ink-2);
-  border: 1px solid transparent;
-  border-radius: 9px;
-  padding: 8px 10px;
+  border: 1px solid rgba(241, 231, 208, 0.08);
+  border-radius: 12px;
+  padding: 14px 12px 12px;
   cursor: pointer;
-  text-align: left;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  text-align: center;
+  font-family: var(--serif);
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
 }
 
-.menu-charm:hover {
-  background: rgba(210, 162, 76, 0.1);
-  border-color: rgba(210, 162, 76, 0.35);
+.roster-card:hover {
+  background: rgba(210, 162, 76, 0.08);
+  border-color: rgba(210, 162, 76, 0.3);
+  transform: translateY(-1px);
 }
 
-.menu-charm.active {
+.roster-card.active {
   border-color: var(--gold);
-  background: rgba(210, 162, 76, 0.14);
+  background: rgba(210, 162, 76, 0.12);
 }
 
-.menu-charm-glyph {
-  font-size: 19px;
-  line-height: 1;
+.roster-glyph {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 2px;
 }
 
-.menu-charm-name {
-  font-size: 0.68rem;
-  color: var(--parchment-dim);
-  line-height: 1.25;
+.roster-cord {
+  width: 1px;
+  height: 12px;
+  background: linear-gradient(to bottom, transparent, rgba(210, 162, 76, 0.6));
 }
 
-.menu-charm.active .menu-charm-name {
+.roster-bead {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 3px rgba(210, 162, 76, 0.7);
+}
+
+.roster-emoji {
+  font-size: 32px;
+  line-height: 1.15;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5));
+}
+
+.roster-name {
+  font-size: 0.92rem;
+  font-weight: 600;
   color: var(--parchment);
+  letter-spacing: 0.01em;
+}
+
+.roster-tag {
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  border: 1px solid rgba(241, 231, 208, 0.18);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+.roster-desc {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  line-height: 1.45;
+  color: var(--parchment-dim);
+  padding: 0 2px;
+}
+
+.roster-card.active .roster-desc,
+.roster-card.active .roster-name {
+  color: var(--parchment);
+}
+
+.roster-action {
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--gold);
+  border: 1px solid rgba(210, 162, 76, 0.5);
+  border-radius: 999px;
+  padding: 5px 14px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.roster-card:hover .roster-action {
+  background: var(--gold);
+  color: #1c1712;
+}
+
+.roster-card.active .roster-action {
+  background: var(--gold);
+  color: #1c1712;
 }
 
 .menu-divider {
