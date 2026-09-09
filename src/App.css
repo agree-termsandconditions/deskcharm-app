@@ -12,10 +12,8 @@ body,
 
 .stage {
   position: relative;
-  width: 220px;
-  height: 300px;
   background: transparent;
-  cursor: grab;
+  perspective: 900px;
 }
 
 .thread {
@@ -25,92 +23,332 @@ body,
   pointer-events: none;
 }
 
-.charm {
+.anchor-handle {
   position: absolute;
+  width: 28px;
+  height: 28px;
   transform: translate(-50%, -50%);
-  font-size: 40px;
-  line-height: 1;
-  cursor: pointer;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+  cursor: grab;
   touch-action: none;
 }
 
-.charm.ritual {
-  animation: pulse 0.5s ease;
+.charm {
+  position: absolute;
+  font-size: 40px;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: none;
+  transform-style: preserve-3d;
 }
 
-@keyframes pulse {
+.charm-inner {
+  display: inline-block;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 10px rgba(0, 0, 0, 0.25));
+}
+
+.charm-inner.idle {
+  animation: breathe 3.6s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 10px rgba(0, 0, 0, 0.25));
+  }
+  50% {
+    transform: scale(1.045);
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 16px rgba(255, 220, 160, 0.35));
+  }
+}
+
+.charm-inner.ritual-ward {
+  animation: ritual-ward 0.55s ease;
+}
+
+@keyframes ritual-ward {
   0% {
-    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 4px rgba(120, 180, 255, 0));
   }
-  30% {
-    transform: translate(-50%, -50%) scale(1.35) rotate(-12deg);
+  15% {
+    transform: scale(1.15) rotate(-6deg);
+    filter: drop-shadow(0 0 22px rgba(140, 190, 255, 0.95));
   }
-  60% {
-    transform: translate(-50%, -50%) scale(1.1) rotate(8deg);
+  35% {
+    transform: scale(0.96) rotate(5deg);
+  }
+  55% {
+    transform: scale(1.06) rotate(-3deg);
+    filter: drop-shadow(0 0 10px rgba(140, 190, 255, 0.5));
   }
   100% {
-    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 4px rgba(120, 180, 255, 0));
   }
+}
+
+.charm-inner.ritual-bless {
+  animation: ritual-bless 0.9s ease;
+}
+
+@keyframes ritual-bless {
+  0% {
+    transform: translateY(0) scale(1);
+    filter: drop-shadow(0 0 0 rgba(255, 210, 130, 0));
+  }
+  40% {
+    transform: translateY(-10px) scale(1.14);
+    filter: drop-shadow(0 6px 18px rgba(255, 210, 130, 0.8));
+  }
+  70% {
+    transform: translateY(-4px) scale(1.05);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    filter: drop-shadow(0 0 0 rgba(255, 210, 130, 0));
+  }
+}
+
+.charm-inner.ritual-sparkle {
+  animation: ritual-sparkle 0.7s ease;
+}
+
+@keyframes ritual-sparkle {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.2);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+.charm-inner.ritual-chime {
+  animation: ritual-chime 0.8s ease;
+}
+
+@keyframes ritual-chime {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  15% {
+    transform: rotate(-16deg);
+  }
+  35% {
+    transform: rotate(13deg);
+  }
+  55% {
+    transform: rotate(-8deg);
+  }
+  75% {
+    transform: rotate(4deg);
+  }
+}
+
+.sparkle-burst,
+.chime-rings {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.spark {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff2c9 0%, #d2a24c 60%, transparent 100%);
+  animation: spark-fly 0.7s ease-out forwards;
+  animation-delay: calc(var(--i) * 0.02s);
+  transform: rotate(calc(var(--i) * 60deg)) translateX(0);
+}
+
+@keyframes spark-fly {
+  0% {
+    opacity: 1;
+    transform: rotate(calc(var(--i) * 60deg)) translateX(4px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(calc(var(--i) * 60deg)) translateX(34px) scale(0.3);
+  }
+}
+
+.ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 1.5px solid rgba(210, 162, 76, 0.65);
+  border-radius: 50%;
+  animation: ring-expand 0.85s ease-out forwards;
+}
+
+.ring-delay {
+  animation-delay: 0.15s;
+}
+
+@keyframes ring-expand {
+  0% {
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    opacity: 0.8;
+  }
+  100% {
+    width: 90px;
+    height: 90px;
+    margin: -45px 0 0 -45px;
+    opacity: 0;
+  }
+}
+
+:root {
+  --ink: #17130e;
+  --ink-2: #201a13;
+  --parchment: #f1e7d0;
+  --parchment-dim: #b9ab8c;
+  --gold: #d2a24c;
+  --line: rgba(241, 231, 208, 0.14);
+  --serif: "Fraunces", ui-serif, Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
 .menu {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  width: 124px;
-  background: rgba(28, 24, 20, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
-  padding: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(6px);
+  width: 216px;
+  background: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 2px 0 rgba(255, 255, 255, 0.03) inset;
+  font-family: var(--mono);
+  color: var(--parchment);
+  animation: menu-in 0.16s ease-out;
 }
 
-.menu-row {
+.menu-arrow {
+  position: absolute;
+  top: -7px;
+  width: 14px;
+  height: 14px;
+  background: var(--ink);
+  border-left: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  transform: rotate(45deg);
+  border-radius: 3px 0 0 0;
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.menu-label {
+  margin: 0 0 10px;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+}
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.menu-charm {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.menu-emoji {
-  background: rgba(255, 255, 255, 0.08);
-  border: none;
-  border-radius: 6px;
-  font-size: 18px;
-  padding: 4px 6px;
+  align-items: center;
+  gap: 8px;
+  background: var(--ink-2);
+  border: 1px solid transparent;
+  border-radius: 9px;
+  padding: 8px 10px;
   cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
-.menu-emoji:hover {
-  background: rgba(255, 255, 255, 0.2);
+.menu-charm:hover {
+  background: rgba(210, 162, 76, 0.1);
+  border-color: rgba(210, 162, 76, 0.35);
+}
+
+.menu-charm.active {
+  border-color: var(--gold);
+  background: rgba(210, 162, 76, 0.14);
+}
+
+.menu-charm-glyph {
+  font-size: 19px;
+  line-height: 1;
+}
+
+.menu-charm-name {
+  font-size: 0.68rem;
+  color: var(--parchment-dim);
+  line-height: 1.25;
+}
+
+.menu-charm.active .menu-charm-name {
+  color: var(--parchment);
+}
+
+.menu-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 14px 0 12px;
 }
 
 .menu-custom {
   display: flex;
-  gap: 4px;
+  gap: 8px;
 }
 
 .menu-custom input {
-  width: 60px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.08);
-  color: white;
-  padding: 3px 6px;
-  font-size: 14px;
+  flex: 1;
+  min-width: 0;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--ink-2);
+  color: var(--parchment);
+  padding: 7px 10px;
+  font-size: 15px;
+  font-family: inherit;
 }
 
-.menu-custom button {
-  border-radius: 6px;
+.menu-custom input:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+.menu-set {
+  border-radius: 8px;
   border: none;
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  font-size: 12px;
-  padding: 3px 8px;
+  background: var(--gold);
+  color: #1c1712;
+  font-weight: 600;
+  font-size: 0.72rem;
+  padding: 0 14px;
   cursor: pointer;
+  transition: filter 0.15s ease;
 }
 
-.menu-custom button:hover {
-  background: rgba(255, 255, 255, 0.3);
+.menu-set:hover {
+  filter: brightness(1.1);
 }

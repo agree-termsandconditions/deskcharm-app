@@ -2,15 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { createRope, stepRope, type RopePoint } from "./useRope";
-import { DEFAULT_CHARMS, type Charm } from "./charms";
+import { DEFAULT_CHARMS, ritualFor, type Charm, type RitualType } from "./charms";
+import { playRitualSound } from "./sound";
 import "./App.css";
 
-const WINDOW_WIDTH = 220;
-const WINDOW_HEIGHT = 300;
-const ANCHOR_X = WINDOW_WIDTH / 2;
-const ANCHOR_Y = 6;
+const MAX_TILT_DEG = 22;
+
+const ANCHOR_Y = 8;
 const CHARM_INDEX = 6;
-const BOUNDS = { width: WINDOW_WIDTH, height: WINDOW_HEIGHT, margin: 26 };
+const MARGIN = 26;
 
 function loadCharm(): Charm {
   try {
@@ -23,70 +23,126 @@ function loadCharm(): Charm {
 }
 
 export default function App() {
+  const [stage, setStage] = useState<{ width: number; height: number } | null>(null);
+  const [anchorX, setAnchorX] = useState(400);
   const [charm, setCharm] = useState<Charm>(loadCharm);
   const [menuOpen, setMenuOpen] = useState(false);
   const [customEmoji, setCustomEmoji] = useState("");
-  const [ritualPulse, setRitualPulse] = useState(false);
-  const [charmPos, setCharmPos] = useState({ x: ANCHOR_X, y: ANCHOR_Y + CHARM_INDEX * 16 });
+  const [activeRitual, setActiveRitual] = useState<RitualType | null>(null);
+  const [charmPos, setCharmPos] = useState({ x: 400, y: ANCHOR_Y + CHARM_INDEX * 16 });
+  const [tilt, setTilt] = useState(0);
+  const [lean, setLean] = useState({ x: 0, y: 0 });
 
-  const pointsRef = useRef<RopePoint[]>(createRope(ANCHOR_X, ANCHOR_Y));
+  const pointsRef = useRef<RopePoint[]>(createRope(anchorX, ANCHOR_Y));
+  const anchorXRef = useRef(anchorX);
   const dragIndexRef = useRef<number | null>(null);
   const dragPosRef = useRef<{ x: number; y: number } | null>(null);
-  const windowDragRef = useRef<{ startScreenX: number; startWindowX: number; screenW: number } | null>(null);
-  const downRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const anchorDraggingRef = useRef(false);
+  const downRef = useRef<{ x: number; y: number } | null>(null);
   const timeRef = useRef(0);
+  const frameCountRef = useRef(0);
+
+  useEffect(() => {
+    invoke<[number, number]>("get_stage_size").then(([w, h]) => {
+      const x = w / 2;
+      anchorXRef.current = x;
+      setAnchorX(x);
+      pointsRef.current = createRope(x, ANCHOR_Y);
+      setStage({ width: w, height: h });
+    });
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("deskcharm.charm", JSON.stringify(charm));
   }, [charm]);
 
   useEffect(() => {
+    if (!stage) return;
     let raf = 0;
+    const bounds = { width: stage.width, height: stage.height, margin: MARGIN };
     const tick = () => {
       timeRef.current += 1;
+      frameCountRef.current += 1;
       const wind = Math.sin(timeRef.current * 0.02) * 0.06;
-      stepRope(pointsRef.current, ANCHOR_X, ANCHOR_Y, wind, dragIndexRef.current, dragPosRef.current, BOUNDS);
+      stepRope(pointsRef.current, anchorXRef.current, ANCHOR_Y, wind, dragIndexRef.current, dragPosRef.current, bounds);
       const tip = pointsRef.current[CHARM_INDEX];
       setCharmPos({ x: tip.x, y: tip.y });
+
+      const velocityX = tip.x - tip.px;
+      const swingTilt = Math.max(-MAX_TILT_DEG, Math.min(MAX_TILT_DEG, velocityX * 3.2));
+      setTilt(swingTilt);
+
+      if (frameCountRef.current % 2 === 0) {
+        invoke("update_hit_points", {
+          points: [
+            [tip.x, tip.y],
+            [anchorXRef.current, ANCHOR_Y],
+          ],
+        }).catch(() => {});
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [stage]);
 
   useEffect(() => {
-    const unlisten = listen<number>("perch-moved", () => {
-      // Window relocated by the tray menu; rope stays anchored in window-local
-      // coordinates so no local state needs to change here.
+    const unlisten = listen("recenter", () => {
+      if (!stage) return;
+      const x = stage.width / 2;
+      anchorXRef.current = x;
+      setAnchorX(x);
     });
     return () => {
       unlisten.then((f) => f());
     };
-  }, []);
+  }, [stage]);
+
+  const setForceInteractive = (active: boolean) => {
+    invoke("set_force_interactive", { active }).catch(() => {});
+  };
 
   const onCharmPointerDown = (e: React.PointerEvent) => {
     e.stopPropagation();
     (e.target as Element).setPointerCapture(e.pointerId);
     dragIndexRef.current = CHARM_INDEX;
     dragPosRef.current = { x: e.clientX, y: e.clientY };
-    downRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
+    downRef.current = { x: e.clientX, y: e.clientY };
+    setForceInteractive(true);
     setMenuOpen(false);
   };
 
   const onCharmPointerMove = (e: React.PointerEvent) => {
-    if (dragIndexRef.current === null) return;
-    dragPosRef.current = { x: e.clientX, y: e.clientY };
+    if (dragIndexRef.current !== null) {
+      dragPosRef.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
+    const dx = e.clientX - charmPos.x;
+    const dy = e.clientY - charmPos.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const pull = Math.min(dist / 60, 1) * 7;
+    setLean({ x: -(dx / dist) * pull, y: -(dy / dist) * pull * 0.4 });
+  };
+
+  const onCharmPointerLeave = () => {
+    setLean({ x: 0, y: 0 });
+  };
+
+  const triggerRitual = (ritual: RitualType) => {
+    setActiveRitual(ritual);
+    playRitualSound(ritual);
+    setTimeout(() => setActiveRitual(null), 900);
   };
 
   const onCharmPointerUp = (e: React.PointerEvent) => {
     dragIndexRef.current = null;
     dragPosRef.current = null;
+    setForceInteractive(false);
     const down = downRef.current;
     if (down) {
       const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
       if (moved < 4) {
-        setRitualPulse(true);
-        setTimeout(() => setRitualPulse(false), 500);
+        triggerRitual(ritualFor(charm));
       }
     }
     downRef.current = null;
@@ -94,82 +150,134 @@ export default function App() {
 
   const onCharmContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    setMenuOpen((v) => !v);
+    setMenuOpen((v) => {
+      const next = !v;
+      setForceInteractive(next);
+      return next;
+    });
   };
 
-  const onBackgroundPointerDown = async (e: React.PointerEvent) => {
-    if ((e.target as Element).closest("[data-charm]") || (e.target as Element).closest("[data-menu]")) return;
-    setMenuOpen(false);
+  const onAnchorPointerDown = (e: React.PointerEvent) => {
+    e.stopPropagation();
     (e.target as Element).setPointerCapture(e.pointerId);
-    const startWindowX = await invoke<number>("get_window_x");
-    const screenW = await invoke<number>("get_screen_width");
-    windowDragRef.current = { startScreenX: e.screenX, startWindowX, screenW };
+    anchorDraggingRef.current = true;
+    setForceInteractive(true);
   };
 
-  const onBackgroundPointerMove = (e: React.PointerEvent) => {
-    const drag = windowDragRef.current;
-    if (!drag) return;
-    const delta = e.screenX - drag.startScreenX;
-    const clamped = Math.min(Math.max(drag.startWindowX + delta, 0), drag.screenW - WINDOW_WIDTH);
-    invoke("set_perch_x", { x: clamped }).catch(() => {});
+  const onAnchorPointerMove = (e: React.PointerEvent) => {
+    if (!anchorDraggingRef.current || !stage) return;
+    const x = Math.min(Math.max(e.clientX, MARGIN), stage.width - MARGIN);
+    anchorXRef.current = x;
+    setAnchorX(x);
   };
 
-  const onBackgroundPointerUp = () => {
-    windowDragRef.current = null;
+  const onAnchorPointerUp = () => {
+    anchorDraggingRef.current = false;
+    setForceInteractive(false);
   };
 
   const chooseCharm = (c: Charm) => {
     setCharm(c);
     setMenuOpen(false);
+    setForceInteractive(false);
   };
 
   const applyCustomEmoji = () => {
     const trimmed = customEmoji.trim();
     if (!trimmed) return;
-    setCharm({ id: "custom", emoji: trimmed, name: "Custom" });
+    setCharm({ id: "custom", emoji: trimmed, name: "Custom", ritual: "sparkle" });
     setCustomEmoji("");
     setMenuOpen(false);
+    setForceInteractive(false);
   };
 
+  const closeMenu = () => {
+    setMenuOpen(false);
+    setForceInteractive(false);
+  };
+
+  if (!stage) return null;
+
   const rope = pointsRef.current;
+  const points = rope.map((p) => `${p.x},${p.y}`).join(" ");
 
   return (
     <div
       className="stage"
-      onPointerDown={onBackgroundPointerDown}
-      onPointerMove={onBackgroundPointerMove}
-      onPointerUp={onBackgroundPointerUp}
+      style={{ width: stage.width, height: stage.height }}
+      onPointerDown={() => menuOpen && closeMenu()}
     >
-      <svg className="thread" width={WINDOW_WIDTH} height={WINDOW_HEIGHT}>
-        <polyline
-          points={rope.map((p) => `${p.x},${p.y}`).join(" ")}
-          fill="none"
-          stroke="rgba(60,50,40,0.55)"
-          strokeWidth={1.5}
-        />
+      <svg className="thread" width={stage.width} height={stage.height}>
+        <polyline points={points} fill="none" stroke="rgba(20,16,12,0.55)" strokeWidth={3.2} strokeLinecap="round" />
+        <polyline points={points} fill="none" stroke="rgba(255,250,240,0.85)" strokeWidth={1.1} strokeLinecap="round" />
       </svg>
+
+      <div
+        className="anchor-handle"
+        style={{ left: anchorX, top: ANCHOR_Y }}
+        onPointerDown={onAnchorPointerDown}
+        onPointerMove={onAnchorPointerMove}
+        onPointerUp={onAnchorPointerUp}
+        title="Drag to move along the top"
+      />
+
+      {activeRitual === "sparkle" && (
+        <div className="sparkle-burst" style={{ left: charmPos.x, top: charmPos.y }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <span key={i} className="spark" style={{ "--i": i } as React.CSSProperties} />
+          ))}
+        </div>
+      )}
+      {activeRitual === "chime" && (
+        <div className="chime-rings" style={{ left: charmPos.x, top: charmPos.y }}>
+          <span className="ring" />
+          <span className="ring ring-delay" />
+        </div>
+      )}
+
       <div
         data-charm
-        className={`charm ${ritualPulse ? "ritual" : ""}`}
-        style={{ left: charmPos.x, top: charmPos.y }}
+        className="charm"
+        style={{
+          left: charmPos.x,
+          top: charmPos.y,
+          transform: `translate(-50%, -50%) translate(${lean.x}px, ${lean.y}px) rotateZ(${(tilt + lean.x * 0.6).toFixed(2)}deg) rotateY(${(tilt * 1.3).toFixed(2)}deg)`,
+        }}
         onPointerDown={onCharmPointerDown}
         onPointerMove={onCharmPointerMove}
         onPointerUp={onCharmPointerUp}
+        onPointerLeave={onCharmPointerLeave}
         onContextMenu={onCharmContextMenu}
         title={`${charm.name} — click for a ritual, right-click to change`}
       >
-        {charm.emoji}
+        <span className={`charm-inner ${activeRitual ? `ritual-${activeRitual}` : "idle"}`}>{charm.emoji}</span>
       </div>
 
       {menuOpen && (
-        <div data-menu className="menu" onPointerDown={(e) => e.stopPropagation()}>
-          <div className="menu-row">
+        <div
+          className="menu"
+          style={{
+            left: Math.min(Math.max(charmPos.x - 108, 12), stage.width - 228),
+            top: charmPos.y + 34,
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div className="menu-arrow" style={{ left: Math.min(96, charmPos.x - Math.max(charmPos.x - 108, 12) - 8) }} />
+          <p className="menu-label">choose a charm</p>
+          <div className="menu-grid">
             {DEFAULT_CHARMS.map((c) => (
-              <button key={c.id} className="menu-emoji" onClick={() => chooseCharm(c)} title={c.name}>
-                {c.emoji}
+              <button
+                key={c.id}
+                className={`menu-charm ${c.id === charm.id ? "active" : ""}`}
+                onClick={() => chooseCharm(c)}
+              >
+                <span className="menu-charm-glyph">{c.emoji}</span>
+                <span className="menu-charm-name">{c.name}</span>
               </button>
             ))}
           </div>
+          <div className="menu-divider" />
+          <p className="menu-label">or type your own</p>
           <div className="menu-custom">
             <input
               value={customEmoji}
@@ -178,7 +286,9 @@ export default function App() {
               onChange={(e) => setCustomEmoji(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && applyCustomEmoji()}
             />
-            <button onClick={applyCustomEmoji}>Set</button>
+            <button className="menu-set" onClick={applyCustomEmoji}>
+              Set
+            </button>
           </div>
         </div>
       )}
