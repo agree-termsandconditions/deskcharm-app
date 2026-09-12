@@ -65,66 +65,68 @@ In your forked repository, click Add file > Create new file.
 
 Name the file path:
 
-Plaintext
-.github/workflows/build.yml
+    .github/workflows/build.yml
+
 Paste the following configuration:
 
 YAML
-name: Build Windows EXE
+-----
+    name: Build Windows EXE
 
-on:
-  workflow_dispatch:
+    on:
+      workflow_dispatch:
 
-jobs:
-  build-tauri:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    jobs:
+      build-tauri:
+        runs-on: windows-latest
+        steps:
+          - name: Checkout repository
+            uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+          - name: Setup Node.js
+              uses: actions/setup-node@v4
+            with:
+              node-version: 20
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+          - name: Install Rust
+              uses: dtolnay/rust-toolchain@stable
 
-      - name: Install frontend dependencies
-        run: npm install
+          - name: Install frontend dependencies
+              run: npm install
 
-      - name: Build Tauri App
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: v0.0.1
-          releaseName: 'App Release'
-          releaseBody: 'Automated release bundle.'
-          prerelease: false
+          - name: Build Tauri App
+            uses: tauri-apps/tauri-action@v0
+            env:
+              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            with:
+              tagName: v0.0.1
+              releaseName: 'App Release'
+              releaseBody: 'Automated release bundle.'
+              prerelease: false
 
-      - name: Upload EXE / MSI Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-binaries
-          path: |
-            src-tauri/target/release/bundle/msi/*.msi
-            src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/release/*.exe
-Click Commit changes... and commit directly to the default branch.
+            - name: Upload EXE / MSI Artifact
+              uses: actions/upload-artifact@v4
+              with:
+                name: windows-binaries
+                path: |
+                  src-tauri/target/release/bundle/msi/*.msi
+                  src-tauri/target/release/bundle/nsis/*.exe
+                  src-tauri/target/release/*.exe
+            
+* Click Commit changes... and commit directly to the default branch.
 
 Step 3: Trigger the Build and Download the .exe
-Go to the Actions tab in your repository.
+-----------------------------------------------------
+* Go to the Actions tab in your repository.
 
-In the left sidebar, click Build Windows EXE.
+* In the left sidebar, click Build Windows EXE.
 
-Click the Run workflow dropdown on the right and select the green Run workflow button.
+* Click the Run workflow dropdown on the right and select the green Run workflow button.
 
-Wait 5–10 minutes for the Windows runner to compile the Rust binary.
+* Wait 5–10 minutes for the Windows runner to compile the Rust binary.
 
-Click on the completed run. Scroll down to the Artifacts section at the bottom to download your packaged .exe or .msi file.
+* Click on the completed run. Scroll down to the Artifacts section at the bottom to download your packaged .exe or .msi file.
 
-Issues and PRs are welcome — new charms, new rituals, and bug fixes especially. `main` is protected, so all changes go through a pull request.
 
 ## License
 
