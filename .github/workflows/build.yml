@@ -25,20 +25,14 @@ jobs:
         run: npm install
 
       - name: Build Tauri App
-        uses: tauri-apps/tauri-action@v0
+        run: npm run tauri build -- --bundles msi
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: v0.1.0
-          releaseName: 'DeskCharm v0.1.0'
-          releaseBody: 'Automated release bundle.'
-          prerelease: false
+          CI: true
 
-      - name: Upload EXE / MSI Artifact
+      - name: Upload EXE and MSI Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: windows-binaries
+          name: DeskCharm-Windows
           path: |
-            src-tauri/target/release/bundle/msi/*.msi
-            src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
