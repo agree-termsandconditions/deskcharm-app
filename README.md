@@ -71,47 +71,44 @@ Paste the following configuration:
 
 YAML
 -----
+    
     name: Build Windows EXE
-
     on:
       workflow_dispatch:
-
+    
+    permissions:
+      contents: write
+    
     jobs:
       build-tauri:
         runs-on: windows-latest
         steps:
           - name: Checkout repository
             uses: actions/checkout@v4
-
+    
           - name: Setup Node.js
-              uses: actions/setup-node@v4
+            uses: actions/setup-node@v4
             with:
               node-version: 20
-
+    
           - name: Install Rust
-              uses: dtolnay/rust-toolchain@stable
-
+            uses: dtolnay/rust-toolchain@stable
+    
           - name: Install frontend dependencies
-              run: npm install
-
+            run: npm install
+    
           - name: Build Tauri App
-            uses: tauri-apps/tauri-action@v0
+            run: npm run tauri build -- --bundles msi
             env:
-              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              CI: true
+    
+          - name: Upload EXE and MSI Artifacts
+            uses: actions/upload-artifact@v4
             with:
-              tagName: v0.0.1
-              releaseName: 'App Release'
-              releaseBody: 'Automated release bundle.'
-              prerelease: false
-
-            - name: Upload EXE / MSI Artifact
-              uses: actions/upload-artifact@v4
-              with:
-                name: windows-binaries
-                path: |
-                  src-tauri/target/release/bundle/msi/*.msi
-                  src-tauri/target/release/bundle/nsis/*.exe
-                  src-tauri/target/release/*.exe
+              name: DeskCharm-Windows
+              path: |
+                src-tauri/target/release/*.exe
+                src-tauri/target/release/bundle/msi/*.msi
             
 * Click Commit changes... and commit directly to the default branch.
 
